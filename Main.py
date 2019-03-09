@@ -18,18 +18,19 @@ import os
 
 # What GPU to use
 os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"
-os.environ["CUDA_VISIBLE_DEVICES"] = "1"
+os.environ["CUDA_VISIBLE_DEVICES"] = "0"
+os.environ["TF_CPP_MIN_LOG_LEVEL"] = "3"
 
 dense_layers = [0, 1, 2]
 layer_sizes = [16, 32, 64]
 conv_layers = [1, 2, 3]
 
-conv_layer_multplier = 2
+conv_layer_multiplier = 2
 dense_layer_multiplier = 16
 
 batch_size = 32
 num_classes = 10
-epochs = 85
+epochs = 100
 steps_per_epoch = 1563
 data_augmentation = True
 num_predictions = 20
@@ -45,6 +46,11 @@ print(x_test.shape[0], 'test samples')
 # Convert class vectors to binary class matrices.
 y_train = keras.utils.to_categorical(y_train, num_classes)
 y_test = keras.utils.to_categorical(y_test, num_classes)
+
+x_train = x_train.astype('float32')
+x_test = x_test.astype('float32')
+x_train /= 255
+x_test /= 255
 
 # iterate over each combination of number of convolution and dense layers
 for dense_layer in dense_layers:
@@ -68,9 +74,9 @@ for dense_layer in dense_layers:
             model.add(Dropout(0.25))
 
             for l in range(conv_layer - 1):
-                model.add(Conv2D(layer_size * conv_layer_multplier, (3, 3), padding='same'))
+                model.add(Conv2D(layer_size * conv_layer_multiplier, (3, 3), padding='same'))
                 model.add(Activation('relu'))
-                model.add(Conv2D(layer_size * conv_layer_multplier, (3, 3)))
+                model.add(Conv2D(layer_size * conv_layer_multiplier, (3, 3)))
                 model.add(Activation('relu'))
                 model.add(MaxPooling2D(pool_size=(2, 2)))
                 model.add(Dropout(0.25))
@@ -92,18 +98,14 @@ for dense_layer in dense_layers:
                           optimizer=opt,
                           metrics=['accuracy'])
 
-            x_train = x_train.astype('float32')
-            x_test = x_test.astype('float32')
-            x_train /= 255
-            x_test /= 255
-
             if not data_augmentation:
                 print('Not using data augmentation.')
                 model.fit(x_train, y_train,
                           batch_size=batch_size,
                           epochs=epochs,
                           validation_data=(x_test, y_test),
-                          shuffle=True)
+                          shuffle=True,
+                          callbacks=[tensorboard])
             else:
                 print('Using real-time data augmentation.')
                 # This will do preprocessing and realtime data augmentation:
